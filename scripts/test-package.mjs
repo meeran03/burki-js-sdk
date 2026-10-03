@@ -1,11 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const sdkDirectory = new URL('../', import.meta.url);
+const expectedPackage = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const consumer = mkdtempSync(join(tmpdir(), 'burki-sdk-consumer-'));
 try {
   // Run prepack explicitly so lifecycle logs cannot corrupt npm's JSON result.
@@ -13,7 +14,7 @@ try {
   const stdout = execFileSync('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', consumer],
     { cwd: sdkDirectory, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const [pack] = JSON.parse(stdout);
-  if (pack.name !== '@burki.dev/sdk' || pack.version !== '0.2.0') throw new Error('Unexpected package identity');
+  if (pack.name !== expectedPackage.name || pack.version !== expectedPackage.version) throw new Error('Unexpected package identity');
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'burki-sdk-consumer', private: true, type: 'module' }));
   // Clean CI runners have package tarballs but not registry metadata cached.
   // Allow registry dependency resolution; opt into strict offline locally.
