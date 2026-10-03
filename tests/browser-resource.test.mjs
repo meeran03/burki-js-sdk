@@ -6,6 +6,13 @@ const requestId = '7ed84b08-7601-4af4-b08f-31b394cde130';
 const callSid = `browser_call_LK${requestId.replaceAll('-', '')}`;
 const snake = { request_id: requestId, assistant_id: 499, max_duration_seconds: 120, recording_consent: false };
 
+test('passes actual-usage billing readiness through without inventing a money reservation',async()=>{
+  const actualUsage={eligible:true,billing_basis:'actual_usage',pricing_verified:true,reservation_cents:0,provider_cost_max_usd:null,external_costs_unknown:false};
+  const resource=new BrowserCallsResource(async()=>actualUsage);
+  assert.strictEqual(await resource.preflight(snake),actualUsage);
+  assert.equal(actualUsage.reservation_cents,0);assert.equal(actualUsage.provider_cost_max_usd,null);
+});
+
 test('normalizes browser schema without changing workflow, tool or variable JSON names', async () => {
   const calls = [];
   const resource = new BrowserCallsResource(async (...args) => { calls.push(args); return { eligible: true, provider_cost_max_usd: '0.00750000001' }; });
