@@ -2,7 +2,7 @@
 
 The SDK includes Burki's LiveKit browser-call runtime and authenticated browser session APIs. Browser audio uses the same runtime as the Burki website: microphone permission before admission, agent readiness, mute, playback recovery, transcripts, and server cleanup with settlement confirmation.
 
-This source prepares version **0.2.0**. Until that version is published, npm's **0.1.0** package does not include these browser APIs.
+Version **0.2.0** includes these browser APIs. The earlier **0.1.0** package does not.
 
 ```sh
 npm install @burki.dev/sdk livekit-client
