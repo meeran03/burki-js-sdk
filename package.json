@@ -1,0 +1,60 @@
+{
+  "name": "@burki.dev/sdk",
+  "version": "0.2.0",
+  "description": "JavaScript and TypeScript API and browser voice SDK for Burki",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser/index.d.ts",
+      "import": "./dist/browser/index.mjs",
+      "require": "./dist/browser/index.js"
+    },
+    "./browser/session-error": {
+      "types": "./dist/browser/session-error.d.ts",
+      "import": "./dist/browser/session-error.mjs",
+      "require": "./dist/browser/session-error.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "examples"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "test:package": "node scripts/test-package.mjs",
+    "prepack": "npm run typecheck && npm run build"
+  },
+  "author": "Burki <support@burki.dev>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/meeran03/burki-js-sdk.git"
+  },
+  "homepage": "https://burki.dev",
+  "bugs": {
+    "url": "https://github.com/meeran03/burki-js-sdk/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "livekit-client": "2.22.2"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "@types/node": "20.19.25"
+  }
+}
