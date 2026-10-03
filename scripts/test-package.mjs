@@ -15,7 +15,10 @@ try {
   const [pack] = JSON.parse(stdout);
   if (pack.name !== '@burki.dev/sdk' || pack.version !== '0.2.0') throw new Error('Unexpected package identity');
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'burki-sdk-consumer', private: true, type: 'module' }));
-  execFileSync('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', join(consumer, pack.filename)],
+  // Clean CI runners have package tarballs but not registry metadata cached.
+  // Allow registry dependency resolution; opt into strict offline locally.
+  const cacheMode = process.env.BURKI_SDK_OFFLINE === '1' ? '--offline' : '--prefer-offline';
+  execFileSync('npm', ['install', cacheMode, '--ignore-scripts', '--no-audit', '--no-fund', join(consumer, pack.filename)],
     { cwd: consumer, stdio: ['ignore', 'pipe', 'pipe'] });
   writeFileSync(join(consumer, 'check.mjs'), `
     import assert from 'node:assert/strict';
