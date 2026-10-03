@@ -1,6 +1,6 @@
 {
   "name": "@burki.dev/sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "JavaScript and TypeScript API and browser voice SDK for Burki",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
