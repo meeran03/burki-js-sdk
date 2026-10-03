@@ -15,7 +15,7 @@ test('published declarations accept current models and nested camel/snake config
     const declaration = resolve(packageRoot, 'dist/index');
     const fixture = join(directory, 'configuration.ts');
     await writeFile(fixture, `
-import { BurkiClient, AssistantCreateParams, AssistantUpdateParams } from ${JSON.stringify(declaration)};
+import { BurkiClient, AssistantCreateParams, AssistantUpdateParams, BrowserPreflight } from ${JSON.stringify(declaration)};
 const client = new BurkiClient({ apiKey: 'test' });
 const camel: AssistantCreateParams = {
   name: 'Meeran', voiceMode: 'cascade', llmProviderConfig: { model: 'gpt-6.1-sol' },
@@ -37,6 +37,12 @@ client.assistants.create(camel); client.assistants.create(snake); client.assista
 const missing: AssistantCreateParams = { voiceMode: 'cascade' };
 // @ts-expect-error: Existing non-string prompt validation stays typed.
 const badPrompt: AssistantCreateParams = { name: 'bad', llmSettings: {systemPrompt:42} };
+declare const preflight: BrowserPreflight;
+const billingBasis: 'actual_usage' | undefined = preflight.billing_basis;
+const pricingVerified: boolean | undefined = preflight.pricing_verified;
+const legacyBilling: Pick<BrowserPreflight, 'billing_basis' | 'pricing_verified'> = {};
+// @ts-expect-error: An estimated allowance is not the actual-usage billing contract.
+preflight.billing_basis = 'estimated_allowance';
 `);
     const result = spawnSync(process.execPath, [createRequire(import.meta.url).resolve('typescript/bin/tsc'),
       '--noEmit', '--strict', '--skipLibCheck', '--moduleResolution', 'bundler', '--module', 'esnext',

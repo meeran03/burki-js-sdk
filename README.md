@@ -32,6 +32,8 @@ if (!allowance.eligible) {
 
 Preflight is a read-only allowance/configuration check. It does not reserve funds or confirm that media can connect. Start repeats the admission checks, and can reject a previously eligible quote. `provider_cost_max_usd` is an exact decimal **string or null**, while reservation and wallet amounts are integer cents.
 
+Funded actual-usage calls report `billing_basis: "actual_usage"`, `pricing_verified: true`, `reservation_cents: 0` and `provider_cost_max_usd: null`. The backend verifies provider rates and bills actual usage. A null maximum cost is expected for this mode; do not replace it with an estimated allowance or a positive reservation. The SDK preserves these response fields unchanged.
+
 The request accepts camelCase and snake_case schema fields. Responses retain the API's snake_case fields. Mixing aliases for the same field is rejected. Variable names, workflow graph keys, custom settings, and tool JSON remain application data and retain their names.
 
 Options include `flowId`, `flowDraft`, `draftConfig`, `maxDurationSeconds` (integer 1–300), `agenda`, `welcomeMessage`, `variables` (up to 100 scalar JSON values), `recordingConsent`, and `testPurpose` (`starter_demo` or `personalized_trial`). A workflow draft requires its owning flow. Recording also requires workspace permission, assistant saved-recording settings, policy approval and storage configuration; passing consent does not bypass those checks.

@@ -23,6 +23,10 @@ export type BrowserCallRequest = RequestIdentity & AssistantIdentity & {
 export type BrowserSessionCredentials = SessionCredentials & { expires_in_seconds: number };
 export type BrowserPreflight = {
   eligible: boolean;
+  /** Funded calls can bill verified provider usage without a money reservation. */
+  billing_basis?: 'actual_usage';
+  /** True after the backend has verified the exact provider rate and credentials. */
+  pricing_verified?: boolean;
   blockers: Array<{ code: string; message: string; action: string }>;
   max_duration_seconds: number | null;
   reservation_cents: number | null;
