@@ -38,9 +38,10 @@ const missing: AssistantCreateParams = { voiceMode: 'cascade' };
 // @ts-expect-error: Existing non-string prompt validation stays typed.
 const badPrompt: AssistantCreateParams = { name: 'bad', llmSettings: {systemPrompt:42} };
 declare const preflight: BrowserPreflight;
-const billingBasis: 'actual_usage' | undefined = preflight.billing_basis;
+const billingBasis: 'actual_usage' | 'reserved' | undefined = preflight.billing_basis;
 const pricingVerified: boolean | undefined = preflight.pricing_verified;
 const legacyBilling: Pick<BrowserPreflight, 'billing_basis' | 'pricing_verified'> = {};
+const reservedBilling: Pick<BrowserPreflight, 'billing_basis'> = { billing_basis: 'reserved' };
 // @ts-expect-error: An estimated allowance is not the actual-usage billing contract.
 preflight.billing_basis = 'estimated_allowance';
 `);

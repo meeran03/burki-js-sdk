@@ -24,7 +24,7 @@ export type BrowserSessionCredentials = SessionCredentials & { expires_in_second
 export type BrowserPreflight = {
   eligible: boolean;
   /** Funded calls can bill verified provider usage without a money reservation. */
-  billing_basis?: 'actual_usage';
+  billing_basis?: 'actual_usage' | 'reserved';
   /** True after the backend has verified the exact provider rate and credentials. */
   pricing_verified?: boolean;
   blockers: Array<{ code: string; message: string; action: string }>;
