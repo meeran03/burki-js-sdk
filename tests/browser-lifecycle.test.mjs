@@ -23,7 +23,7 @@ function deferred() {
   const promise = new Promise((yes,no) => {resolve=yes;reject=no;});
   return {promise,resolve,reject};
 }
-function setup({permission, admission, rejectStart, rejectStop, builder=false, format='cjs', input, authenticated=false, throwErrorCallback} = {}) {
+function setup({permission, admission, rejectStart, rejectStop, builder=false, format='cjs', input, authenticated=false, throwErrorCallback, readStatus=()=>({settled:true}), sleep=noDelay=>noDelay} = {}) {
   const events=[], operations=[], requestLog=[];
   input ??= builder?{kind:'builder',request_id:requestId}:{request_id:requestId,assistant_id:42,flow_id:7,recording_consent:true,draft_config:{language:'ur'}};
   const sessionCredentials={...credentials,call_sid:`browser_call_LK${input.request_id.replaceAll('-','').toLowerCase()}`};
@@ -43,15 +43,15 @@ function setup({permission, admission, rejectStart, rejectStop, builder=false, f
     Track:{Kind:{Audio:'audio'}},
   };
   const module={exports:{}};
-  vm.runInNewContext(format==='esm'?esmSource:cjsSource, {module,exports:module.exports,require:name=>{if(name==='livekit-client')return sdk;assert.match(name,/session-error\.(js|mjs)$/);return format==='esm'?browserEsm:browserCjs;}, setTimeout:(callback,delay)=>{if(delay===30000)readinessTimeout=callback;return setTimeout(callback,delay);},clearTimeout,AbortController,AbortSignal,TextDecoder,Error,document:{body:{appendChild(){}}},fetch:async(url,options)=>{
+  vm.runInNewContext(format==='esm'?esmSource:cjsSource, {module,exports:module.exports,require:name=>{if(name==='livekit-client')return sdk;assert.match(name,/session-error\.(js|mjs)$/);return format==='esm'?browserEsm:browserCjs;}, setTimeout:(callback,delay)=>{if(delay===30000)readinessTimeout=callback;return setTimeout(callback,sleep(delay));},clearTimeout,AbortController,AbortSignal,TextDecoder,Error,document:{body:{appendChild(){}}},fetch:async(url,options)=>{
     requestLog.push({url,options,body:options.body===undefined?undefined:JSON.parse(options.body)});
     if(url.endsWith('/browser-sessions'))return {ok:true,json:async()=>sessionCredentials};
-    return {ok:true,json:async()=>({settled:true})};
+    return {ok:true,json:async()=>url.endsWith('/stop')?{settled:true}:readStatus()};
   }});
   const transport={
     async start(){operations.push('start');if(admission)await admission.promise;if(rejectStart)throw rejectStart;return builder?{builder_session_id:'builder-1',revision:1,status:'draft',draft:{name:'Example'},final_config:{},voice_cloning_available:false,session:sessionCredentials}:sessionCredentials;},
     async stop(){operations.push('stop');if(rejectStop)throw rejectStop;},
-    async status(){operations.push('status');return {settled:true};},
+    async status(){operations.push('status');return readStatus();},
   };
   const callbacks={ready:()=>events.push('ready'),error:(...args)=>{events.push(['error',...args]);if(throwErrorCallback)throw throwErrorCallback;},ended:settled=>events.push(['ended',settled]),transcript:(...args)=>events.push(['transcript',...args]),builderSnapshot:snapshot=>events.push(['builder',snapshot]),playbackBlocked:blocked=>events.push(['blocked',blocked])};
   const call=authenticated
@@ -165,5 +165,40 @@ for (const event of ['disconnect','timeout']) {
     assert.throws(()=>event==='disconnect'?state.room.handlers.disconnect():state.readinessTimeout(),error=>error===callbackFailure);
     assert.equal(await state.call.stop(),true);assert.equal(state.track.stopped,true);
     assert.equal(state.operations.filter(operation=>operation==='stop').length,1);
+  });
+}
+
+for (const authenticated of [true, false]) {
+  test(`ready disconnect reports a recorded failure once while confirming settlement (authenticated=${authenticated})`,async()=>{
+    const statuses=[
+      {settled:false,call_status:'ongoing'},
+      {settled:false,call_status:'failed'},
+      {settled:true,call_status:'failed'},
+    ];
+    const state=setup({authenticated,readStatus:()=>statuses.shift(),sleep:delay=>delay===1500?0:delay});
+    await state.call.start();
+    state.room.handlers.participant({isAgent:true,identity:'agent',attributes:{'lk.agent.state':'listening'}});
+    state.room.handlers.disconnect();
+    assert.equal(await state.call.stop(),true);
+    assert.equal(statuses.length,0);
+    assert.deepEqual(state.events.map(event=>Array.isArray(event)?event[0]:event),['ready','error','ended']);
+    assert.equal(state.events[1][2].stage,'runtime');
+    assert.equal(state.events[1][2].reason,'runtime_failed');
+    assert.deepEqual(state.events[2],['ended',true]);
+  });
+}
+
+for (const [action, status] of [
+  ['stop',{settled:true,call_status:'failed'}],
+  ['disconnect',{settled:true,call_status:'completed'}],
+  ['disconnect',{settled:true}],
+]) {
+  test(`ready ${action} preserves benign closure with status ${status.call_status ?? 'legacy'}`,async()=>{
+    const state=setup({readStatus:()=>status});
+    await state.call.start();
+    state.room.handlers.participant({isAgent:true,identity:'agent',attributes:{'lk.agent.state':'listening'}});
+    if(action==='disconnect')state.room.handlers.disconnect();
+    assert.equal(await state.call.stop(),true);
+    assert.deepEqual(state.events,['ready',['ended',true]]);
   });
 }

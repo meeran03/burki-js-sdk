@@ -31,11 +31,13 @@ export type SessionCredentials = {
 
 export type BuilderSessionCredentials = BuilderSnapshot & { session: SessionCredentials };
 
+export type BrowserCallStatus = "ongoing" | "completed" | "failed";
+
 /** Request-bound capability transport. Does not read or replace account auth. */
 export type BrowserSessionApi = {
   start: () => Promise<SessionCredentials | BuilderSessionCredentials>;
   stop: () => Promise<unknown>;
-  status: () => Promise<{ settled?: boolean }>;
+  status: () => Promise<{ settled?: boolean; call_status?: BrowserCallStatus }>;
 };
 
 export type BrowserSessionStage = "microphone_requested" | "microphone_granted" | "admission_requested" | "admission_accepted" | "media_connected" | "agent_ready";
@@ -55,7 +57,7 @@ export type BrowserSessionCallbacks = {
 };
 
 export type BrowserSessionFailure = {
-  stage: "microphone" | "playback" | "admission" | "media_connection" | "agent_ready";
+  stage: "microphone" | "playback" | "admission" | "media_connection" | "agent_ready" | "runtime";
   reason: string;
   http_status?: number;
 };
@@ -175,7 +177,7 @@ export class LiveKitBrowserSession {
       if (!this.stopped) {
         try {
           if (!this.ready) this.callbacks.error("The assistant disconnected before the test was ready.", { stage: "agent_ready", reason: "agent_disconnected" });
-        } finally { void this.stop(); }
+        } finally { void this.beginStop(this.ready); }
       }
     });
     this.room.registerTextStreamHandler("lk.transcription", (reader, participant) => {
@@ -289,6 +291,10 @@ export class LiveKitBrowserSession {
   }
 
   stop(): Promise<boolean> {
+    return this.beginStop(false);
+  }
+
+  private beginStop(reportRemoteFailure: boolean): Promise<boolean> {
     if (this.stopping) return this.stopping;
     this.stopped = true;
     if (this.timeout) clearTimeout(this.timeout);
@@ -296,11 +302,11 @@ export class LiveKitBrowserSession {
     this.microphone?.stop();
     this.audioElements.forEach((element) => { element.pause(); element.remove(); });
     this.audioElements.clear();
-    this.stopping = this.finish();
+    this.stopping = this.finish(reportRemoteFailure);
     return this.stopping;
   }
 
-  private async finish(): Promise<boolean> {
+  private async finish(reportRemoteFailure: boolean): Promise<boolean> {
     // Local transport teardown must not prevent the authenticated server stop.
     let disconnectTimer: ReturnType<typeof setTimeout> | undefined;
     await Promise.race([
@@ -320,6 +326,12 @@ export class LiveKitBrowserSession {
       else await this.request(`/browser-sessions/${this.callSid}/stop`, "POST");
       while (Date.now() < deadline) {
         const status = this.sessionApi ? await this.sessionApi.status() : await this.request(`/browser-sessions/${this.callSid}`, "GET");
+        if (reportRemoteFailure && status.call_status === "failed") {
+          reportRemoteFailure = false;
+          try {
+            this.callbacks.error("The voice service stopped unexpectedly. You can try a new test.", { stage: "runtime", reason: "runtime_failed" });
+          } catch { /* A consumer callback cannot interrupt settlement confirmation. */ }
+        }
         if (status.settled === true) { settled = true; break; }
         await new Promise((resolve) => setTimeout(resolve, 1500));
       }

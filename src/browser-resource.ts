@@ -1,4 +1,4 @@
-import type { BrowserSessionApi, SessionCredentials } from './browser/index';
+import type { BrowserCallStatus, BrowserSessionApi, SessionCredentials } from './browser/index';
 import { serializeAssistantInput } from './serialization';
 
 /** The authenticated SDK transport. Responses retain the API's snake_case fields. */
@@ -45,6 +45,8 @@ export type BrowserPreflight = {
 };
 export type BrowserSessionStatus = {
   status: 'active' | 'stopping' | 'completed' | 'review_required';
+  /** Recorded call status, when reported by the server. */
+  call_status?: BrowserCallStatus;
   settled: boolean;
   review_required: boolean;
   reason: string | null;
